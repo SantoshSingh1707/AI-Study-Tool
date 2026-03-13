@@ -162,20 +162,6 @@ def load_rag_components(mistral_api_key):
 # --- Sidebar configuration ---
 st.sidebar.title("⚙️ Configuration")
 
-# API Key Retrieval
-mistral_key = os.getenv("MISTRAL_API_KEY")
-
-if not mistral_key:
-    st.sidebar.error("❌ `MISTRAL_API_KEY` not found in environment.")
-    st.sidebar.info("Please set the `MISTRAL_API_KEY` in your `.env` file or environment variables to enable AI study features.")
-    st.error("AI features are currently disabled. Please configure the Mistral API key.")
-
-retriever, llm, vectorstore, embedding_manager = load_rag_components(mistral_key)
-
-if retriever is None:
-    st.error("Failed to initialize RAG system. Please check your setup.")
-    st.stop()
-
 top_k = st.sidebar.slider("Number of source chunks to use", 1, 20, 10)
 score_threshold = st.sidebar.slider("Similarity threshold", 0.0, 1.0, 0.20, 0.05)
 num_questions = st.sidebar.slider("Number of questions to generate", 1, 15, 5)
