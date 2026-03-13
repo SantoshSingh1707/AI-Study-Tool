@@ -162,16 +162,13 @@ def load_rag_components(mistral_api_key):
 # --- Sidebar configuration ---
 st.sidebar.title("⚙️ Configuration")
 
-# API Key Section
-with st.sidebar.expander("🔑 API Credentials", expanded=True):
-    mistral_key = st.text_input(
-        "Mistral API Key",
-        value=os.getenv("MISTRAL_API_KEY", ""),
-        type="password",
-        help="Enter your Mistral API key here. Get one at console.mistral.ai"
-    )
-    if not mistral_key:
-        st.warning("Please provide a Mistral API key to enable AI features.")
+# API Key Retrieval
+mistral_key = os.getenv("MISTRAL_API_KEY")
+
+if not mistral_key:
+    st.sidebar.error("❌ `MISTRAL_API_KEY` not found in environment.")
+    st.sidebar.info("Please set the `MISTRAL_API_KEY` in your `.env` file or environment variables to enable AI study features.")
+    st.error("AI features are currently disabled. Please configure the Mistral API key.")
 
 retriever, llm, vectorstore, embedding_manager = load_rag_components(mistral_key)
 
