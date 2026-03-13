@@ -1,0 +1,32 @@
+[project]
+name = "question-maker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.5.2",
+    "docx2txt>=0.9",
+    "easyocr>=1.7.2",
+    "faiss-cpu>=1.13.2",
+    "ipykernel>=7.2.0",
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-core>=1.2.17",
+    "langchain-mistralai>=1.1.1",
+    "langchain-text-splitters>=1.1.1",
+    "numpy>=2.4.2",
+    "opencv-python>=4.13.0.92",
+    "pandas>=2.3.3",
+    "pymupdf>=1.27.1",
+    "pypdf>=6.7.5",
+    "python-dotenv>=1.2.2",
+    "python-pptx>=1.0.2",
+    "ruff>=0.15.6",
+    "sentence-transformers>=5.2.3",
+    "streamlit>=1.55.0",
+    "torch>=2.6.0",
+    "torchaudio>=2.6.0",
+    "torchvision>=0.21.0",
+    "tqdm>=4.67.3",
+]
