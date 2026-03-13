@@ -127,7 +127,7 @@ st.markdown("Your all-in-one AI study platform for mastering documents")
 
 # Load RAG components only once using caching
 @st.cache_resource
-def load_rag_components():
+def load_rag_components(mistral_api_key):
     try:
         # Lazy imports to speed up initial app load
         from src.embedding import EmbeddingManager
@@ -144,21 +144,40 @@ def load_rag_components():
         vectorstore.initialize_store()
         
         retriever = RAGRetrieval(vectorstore, embedding_manager)
-        llm = ChatMistralAI(model="mistral-small-2506", temperature=0.7)
+        
+        if not mistral_api_key:
+            return retriever, None, vectorstore, embedding_manager
+            
+        llm = ChatMistralAI(
+            model="mistral-small-2506", 
+            temperature=0.7,
+            api_key=mistral_api_key
+        )
         
         return retriever, llm, vectorstore, embedding_manager
     except Exception as e:
         st.error(f"Error loading RAG components: {str(e)}")
         return None, None, None, None
 
-retriever, llm, vectorstore, embedding_manager = load_rag_components()
-
-if retriever is None or llm is None:
-    st.error("Failed to initialize RAG system. Please check your setup.")
-    st.stop()
-
 # --- Sidebar configuration ---
 st.sidebar.title("⚙️ Configuration")
+
+# API Key Section
+with st.sidebar.expander("🔑 API Credentials", expanded=True):
+    mistral_key = st.text_input(
+        "Mistral API Key",
+        value=os.getenv("MISTRAL_API_KEY", ""),
+        type="password",
+        help="Enter your Mistral API key here. Get one at console.mistral.ai"
+    )
+    if not mistral_key:
+        st.warning("Please provide a Mistral API key to enable AI features.")
+
+retriever, llm, vectorstore, embedding_manager = load_rag_components(mistral_key)
+
+if retriever is None:
+    st.error("Failed to initialize RAG system. Please check your setup.")
+    st.stop()
 
 top_k = st.sidebar.slider("Number of source chunks to use", 1, 20, 10)
 score_threshold = st.sidebar.slider("Similarity threshold", 0.0, 1.0, 0.20, 0.05)
@@ -294,20 +313,23 @@ with tab_learning:
         learn_btn = st.button("✨ Generate Study Material", type="primary", use_container_width=True)
     
     if learn_btn:
-        from src.search import generate_learning_content
-        with st.spinner(f"Generating {learn_mode}..."):
-            try:
-                content = generate_learning_content(
-                    mode=learn_mode,
-                    retriever=retriever,
-                    llm=llm,
-                    top_k=top_k,
-                    source_filter=selected_sources if selected_sources else None,
-                    topic=topic_focus
-                )
-                st.session_state.learning_content = content
-            except Exception as e:
-                st.error(f"Error generating content: {e}")
+        if llm is None:
+            st.error("Please enter a valid Mistral API key in the sidebar configuration to generate study material.")
+        else:
+            from src.search import generate_learning_content
+            with st.spinner(f"Generating {learn_mode}..."):
+                try:
+                    content = generate_learning_content(
+                        mode=learn_mode,
+                        retriever=retriever,
+                        llm=llm,
+                        top_k=top_k,
+                        source_filter=selected_sources if selected_sources else None,
+                        topic=topic_focus
+                    )
+                    st.session_state.learning_content = content
+                except Exception as e:
+                    st.error(f"Error generating content: {e}")
                 
     if st.session_state.get("learning_content"):
         st.markdown("---")
@@ -360,29 +382,32 @@ with tab_quiz:
         st.session_state.learning_content = None
     
     if generate_btn:
-        from src.search import generate_questions
-        with st.spinner("Analyzing documents and crafting MCQs..."):
-            try:
-                results = generate_questions(
-                    difficulty=difficulty,
-                    retriever=retriever,
-                    llm=llm,
-                    num_questions=num_questions,
-                    top_k=top_k,
-                    min_score=score_threshold,
-                    source_filter=selected_sources if selected_sources else None,
-                    topic=topic_focus,
-                    question_types=question_types if question_types else ["MCQ"]
-                )
-                st.session_state.quiz_data = results["questions"]
-                st.session_state.quiz_sources = results["sources"]
-                st.session_state.user_answers = {}
-                st.session_state.quiz_submitted = False
-                import time
-                st.session_state.start_time = time.time()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error generating quiz: {str(e)}")
+        if llm is None:
+            st.error("Please enter a valid Mistral API key in the sidebar configuration to generate a quiz.")
+        else:
+            from src.search import generate_questions
+            with st.spinner("Analyzing documents and crafting MCQs..."):
+                try:
+                    results = generate_questions(
+                        difficulty=difficulty,
+                        retriever=retriever,
+                        llm=llm,
+                        num_questions=num_questions,
+                        top_k=top_k,
+                        min_score=score_threshold,
+                        source_filter=selected_sources if selected_sources else None,
+                        topic=topic_focus,
+                        question_types=question_types if question_types else ["MCQ"]
+                    )
+                    st.session_state.quiz_data = results["questions"]
+                    st.session_state.quiz_sources = results["sources"]
+                    st.session_state.user_answers = {}
+                    st.session_state.quiz_submitted = False
+                    import time
+                    st.session_state.start_time = time.time()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error generating quiz: {str(e)}")
     
     # Display Quiz
     if st.session_state.quiz_data:
