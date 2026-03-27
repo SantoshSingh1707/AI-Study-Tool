@@ -3,7 +3,6 @@ from pathlib import Path
 import warnings
 import tempfile
 import os
-import uuid
 from dotenv import load_dotenv
 
 # Set page config as early as possible for better perceived performance
@@ -127,6 +126,47 @@ st.markdown("Your all-in-one AI study platform for mastering documents")
 
 # Load RAG components only once using caching
 @st.cache_resource
+def validate_generation_inputs(vectorstore, selected_sources, mode="quiz", num_questions=None, question_types=None, topic=None):
+    """Validates user inputs before generating content
+
+    Args:
+        vectorstore: VectorStore instance
+        selected_sources: List of selected source files
+        mode: "quiz" or "learning"
+        num_questions: Required for quiz mode
+        question_types: Required for quiz mode
+        topic: Optional topic focus
+    """
+    errors = []
+
+    # Check available sources
+    available_sources = vectorstore.get_available_sources() if vectorstore else []
+    if not available_sources:
+        errors.append("No documents found in the database. Please upload a document first.")
+
+    # If sources are selected, ensure they exist
+    if selected_sources:
+        invalid_sources = [s for s in selected_sources if s not in available_sources]
+        if invalid_sources:
+            errors.append(f"Selected sources not found: {', '.join(invalid_sources)}")
+
+    # Quiz-specific validations
+    if mode == "quiz":
+        if num_questions is None:
+            errors.append("Number of questions is required.")
+        elif num_questions < 1 or num_questions > 20:
+            errors.append("Number of questions must be between 1 and 20.")
+
+        if not question_types:
+            errors.append("Please select at least one question type.")
+
+    # Validate topic length if provided
+    if topic and len(topic.strip()) > 200:
+        errors.append("Topic focus is too long (max 200 characters).")
+
+    return errors
+
+
 def load_rag_components(mistral_api_key):
     try:
         # Lazy imports to speed up initial app load
@@ -313,20 +353,31 @@ with tab_learning:
         if llm is None:
             st.error("Please enter a valid Mistral API key in the sidebar configuration to generate study material.")
         else:
-            from src.search import generate_learning_content
-            with st.spinner(f"Generating {learn_mode}..."):
-                try:
-                    content = generate_learning_content(
-                        mode=learn_mode,
-                        retriever=retriever,
-                        llm=llm,
-                        top_k=top_k,
-                        source_filter=selected_sources if selected_sources else None,
-                        topic=topic_focus
-                    )
-                    st.session_state.learning_content = content
-                except Exception as e:
-                    st.error(f"Error generating content: {e}")
+            # Validate inputs
+            errors = validate_generation_inputs(
+                vectorstore=vectorstore,
+                selected_sources=selected_sources if selected_sources else [],
+                mode="learning",
+                topic=topic_focus
+            )
+            if errors:
+                for err in errors:
+                    st.error(err)
+            else:
+                from src.search import generate_learning_content
+                with st.spinner(f"Generating {learn_mode}..."):
+                    try:
+                        content = generate_learning_content(
+                            mode=learn_mode,
+                            retriever=retriever,
+                            llm=llm,
+                            top_k=top_k,
+                            source_filter=selected_sources if selected_sources else None,
+                            topic=topic_focus
+                        )
+                        st.session_state.learning_content = content
+                    except Exception as e:
+                        st.error(f"Error generating content: {e}")
                 
     if st.session_state.get("learning_content"):
         st.markdown("---")
@@ -382,28 +433,42 @@ with tab_quiz:
         if llm is None:
             st.error("Please enter a valid Mistral API key in the sidebar configuration to generate a quiz.")
         else:
-            from src.search import generate_questions
-            with st.spinner("Analyzing documents and crafting MCQs..."):
-                try:
-                    results = generate_questions(
-                        difficulty=difficulty,
-                        retriever=retriever,
-                        llm=llm,
-                        num_questions=num_questions,
-                        top_k=top_k,
-                        min_score=score_threshold,
-                        source_filter=selected_sources if selected_sources else None,
-                        topic=topic_focus,
-                        question_types=question_types if question_types else ["MCQ"]
-                    )
-                    st.session_state.quiz_data = results["questions"]
-                    st.session_state.quiz_sources = results["sources"]
-                    st.session_state.user_answers = {}
-                    st.session_state.quiz_submitted = False
-                    import time
-                    st.session_state.start_time = time.time()
-                    st.rerun()
-                except Exception as e:
+            # Validate inputs
+            errors = validate_generation_inputs(
+                vectorstore=vectorstore,
+                selected_sources=selected_sources if selected_sources else [],
+                mode="quiz",
+                num_questions=num_questions,
+                question_types=question_types,
+                topic=topic_focus
+            )
+            if errors:
+                for err in errors:
+                    st.error(err)
+            else:
+                from src.search import generate_questions
+                with st.spinner("Analyzing documents and crafting MCQs..."):
+                    try:
+                        results = generate_questions(
+                            difficulty=difficulty,
+                            retriever=retriever,
+                            llm=llm,
+                            num_questions=num_questions,
+                            top_k=top_k,
+                            min_score=score_threshold,
+                            source_filter=selected_sources if selected_sources else None,
+                            topic=topic_focus,
+                            question_types=question_types if question_types else ["MCQ"]
+                        )
+                        st.session_state.quiz_data = results["questions"]
+                        st.session_state.quiz_sources = results["sources"]
+                        st.session_state.user_answers = {}
+                        st.session_state.quiz_submitted = False
+                        import time
+                        st.session_state.start_time = time.time()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error generating quiz: {e}")
                     st.error(f"Error generating quiz: {str(e)}")
     
     # Display Quiz

@@ -1,0 +1,33 @@
+[run]
+source = src
+omit =
+    */tests/*
+    */migrations/*
+    */venv/*
+    */.venv/*
+    */site-packages/*
+    */__pycache__/*
+    */node_modules/*
+    */dist/*
+    */build/*
+    **/*.pyc
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    pass
+    raise ImportError
+
+[html]
+directory = htmlcov
+title = Backend Coverage Report
+
+[xml]
+output = coverage.xml

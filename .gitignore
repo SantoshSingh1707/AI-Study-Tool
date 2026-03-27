@@ -23,6 +23,12 @@ wheels/
 
 # Environment
 .env
+.env.local
+.env.*.local
+.env.development
+
+# Backend environment (separate from root)
+backend/.env
 
 # Local Database & Data
 data/vector_store/
@@ -30,10 +36,68 @@ data/pdf/
 data/textfiles/
 data/docx/
 data/pptx/
+backend/data/
+
+# Upload directory (created at runtime)
+backend/data/uploads/
+data/uploads/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage/
+frontend/coverage/
+
+# Cache directories
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
 
 # Streamlit
 .streamlit/
+.streamlit/secrets.toml
+
+# Claude Code local settings
+.claude/settings.local.json
+frontend/.claude/settings.local.json
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Frontend build artifacts
+frontend/dist/
+frontend/build/
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Virtual environments (any level, including nested)
+.venv/
+venv/
+ENV/
+env/
+**/.venv/
+**/venv/
+**/ENV/
+**/env/

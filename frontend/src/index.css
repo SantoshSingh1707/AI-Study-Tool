@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #8B5CF6;
+    --color-secondary: #10B981;
+    --color-bg-dark: #0F172A;
+    --color-card-bg: rgba(30, 41, 59, 0.7);
+    --color-text-main: #F1F5F9;
+    --color-text-muted: #94A3B8;
+    --color-glass-border: rgba(255, 255, 255, 0.1);
+  }
+
+  body {
+    @apply bg-dark-900 text-dark-100 font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Glassmorphism Card */
+  .card-glass {
+    @apply bg-card-bg backdrop-blur-glass border border-glass-border rounded-2xl p-6 shadow-glass;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card-glass:hover {
+    @apply border-primary-500;
+    transform: translateY(-2px);
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-easy {
+    @apply bg-green-500/20 text-green-400;
+  }
+
+  .badge-medium {
+    @apply bg-yellow-500/20 text-yellow-400;
+  }
+
+  .badge-hard {
+    @apply bg-red-500/20 text-red-400;
+  }
+
+  .badge-mcq {
+    @apply bg-primary-500/20 text-primary-400;
+  }
+
+  .badge-truefalse {
+    @apply bg-secondary-500/20 text-secondary-400;
+  }
+
+  /* Button */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 hover:bg-primary-500 text-white shadow-lg hover:shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply btn bg-dark-700 hover:bg-dark-600 text-dark-100 border border-dark-600;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-500 text-white;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  .select {
+    @apply input cursor-pointer;
+  }
+
+  .textarea {
+    @apply input min-h-[100px] resize-y;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    @apply w-80 bg-dark-950 border-r border-dark-800 h-screen sticky top-0 overflow-y-auto;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply h-2 bg-dark-700 rounded-full overflow-hidden;
+  }
+
+  .progress-bar-inner {
+    @apply h-full bg-gradient-to-r from-primary-500 to-secondary-500 transition-all duration-300;
+  }
+
+  /* Flashcard */
+  .flashcard {
+    @apply relative w-full max-w-2xl h-64 cursor-pointer preserve-3d;
+    perspective: '1000px';
+  }
+
+  .flashcard-inner {
+    @apply relative w-full h-full text-center transition-transform duration-700;
+    transform-style: preserve-3d;
+  }
+
+  .flashcard.flipped .flashcard-inner {
+    transform: rotateY(180deg);
+  }
+
+  .flashcard-front,
+  .flashcard-back {
+    @apply absolute w-full h-full backface-hidden rounded-2xl flex items-center justify-center p-8;
+  }
+
+  .flashcard-front {
+    @apply bg-gradient-to-br from-primary-900 to-dark-900 border-2 border-primary-500;
+  }
+
+  .flashcard-back {
+    @apply bg-gradient-to-br from-secondary-900 to-dark-900 border-2 border-secondary-500 transform rotateY(180deg);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-500;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
