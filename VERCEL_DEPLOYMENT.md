@@ -1,59 +1,129 @@
-# 🚀 Deploy on Vercel
+# 🚀 Deployment Guide: Hugging Face + Vercel
 
-This guide covers deploying the RAG Question Maker on Vercel (frontend) and Railway (backend).
+This guide covers deploying the RAG Question Maker with **Hugging Face Spaces (backend)** and **Vercel (frontend)**.
 
 ---
 
 ## 📋 Prerequisites
 
-- **GitHub account** (Vercel integrates with GitHub)
+- **GitHub account** (for source control)
+- **Hugging Face account** (free at [huggingface.co](https://huggingface.co))
 - **Vercel account** (free at [vercel.com](https://vercel.com))
-- **Railway account** for backend (free tier available)
-- **Mistral AI API key** (from [mistral.ai](https://mistral.ai))
+- **API Keys**:
+  - Mistral AI API key (from [mistral.ai](https://mistral.ai))
+  - Groq API key (optional, from [groq.com](https://groq.com))
+  - Google Gemini API key (optional, from [makersuite.google.com](https://makersuite.google.com))
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-Vercel (Frontend) → Railway (Backend) → Mistral AI
-    │                      │
-    └──────HTTP────────────┘
+Vercel (Frontend) → Hugging Face Spaces (Backend) → Mistral AI / Groq / Gemini
+    │                       │
+    └──────HTTP─────────────┘
 ```
 
 ---
 
-## Part 1: Deploy Backend to Railway
+## Part 1: Deploy Backend to Hugging Face Spaces
 
-### 1.1 Create Railway Project
+### 1.1 Create Hugging Face Space
 
-1. Go to [Railway.app](https://railway.app) and sign in
-2. Click **"New Project"** → **"Deploy from GitHub repo"**
-3. Select your repository: `SantoshSingh1707/AI-Study-Tool`
-4. Choose to deploy only the `backend` directory:
-   - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+1. Go to [huggingface.co/spaces](https://huggingface.co/spaces)
+2. Click **"Create new Space"**
+3. Fill in:
+   - **Owner**: `santosh1707` (your username)
+   - **Space name**: `rag-question-generator-api`
+   - **SDK**: `Docker`
+   - **Hardware**: `CPU basic` (free tier)
+   - **Public/Private**: Your choice
+4. Click **"Create Space"**
 
-### 1.2 Set Environment Variables on Railway
+### 1.2 Prepare Deployment Files
 
-In your Railway project settings, add these environment variables:
+From your local project root:
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `MISTRAL_API_KEY` | Your Mistral API key | Required for LLM |
-| `HUGGINGFACEHUB_API_TOKEN` | Your HuggingFace token (optional) | For embedding model downloads |
-
-Railway will automatically set `PORT` environment variable.
-
-### 1.3 Get Backend URL
-
-After deployment, Railway will provide a URL like:
-```
-https://your-project.up.railway.app
+```powershell
+# These files should already exist:
+# - Dockerfile
+# - backend/ (directory with main.py, config.py, etc.)
+# - src/ (RAG modules)
+# - requirements.txt
+# - huggingface.yml (optional config)
+# - .dockerignore
 ```
 
-**Save this URL** - you'll need it for the frontend configuration.
+### 1.3 Deploy to Hugging Face
+
+Use the provided deployment script:
+
+```powershell
+cd "C:\Users\Santosh\Desktop\ML-Project-Deployment\RAG-Project\Question-maker"
+.\deploy-huggingface.ps1
+```
+
+The script will:
+- Clone your Space repository
+- Copy necessary files (Dockerfile, backend/, src/, requirements.txt)
+- Set up directory structure
+- Commit and push
+
+**Alternative - Manual:**
+
+```bash
+# Clone the Space
+git clone https://huggingface.co/spaces/santosh1707/rag-question-generator-api
+cd rag-question-generator-api
+
+# Copy project files
+cp -r ../backend ./
+cp -r ../src ./
+cp ../Dockerfile ./
+cp ../requirements.txt ./
+cp ../huggingface.yml ./
+
+# Create data directories
+mkdir -p data/vector_store data/uploads data/pdf data/textfiles data/docx data/pptx
+touch data/vector_store/.gitkeep data/uploads/.gitkeep
+
+# Commit and push
+git add .
+git commit -m "Deploy backend"
+git push origin main
+```
+
+### 1.4 Set Environment Variables
+
+In your Hugging Face Space → **Settings** → **Variables**, add:
+
+| Variable | Value | Required |
+|----------|-------|----------|
+| `MISTRAL_API_KEY` | Your Mistral API key | Yes |
+| `GROQ_API_KEY` | Your Groq API key (optional) | No |
+| `GEMINI_API_KEY` | Your Gemini API key (optional) | No |
+| `HUGGINGFACEHUB_API_TOKEN` | Your Hugging Face token | Yes (for model downloads) |
+| `PORT` | `8000` | Yes |
+
+**Get Hugging Face token:** https://huggingface.co/settings/tokens → New token (Full access)
+
+### 1.5 Wait for Build
+
+- Hugging Face will automatically build your Docker image (5-10 minutes)
+- Monitor progress on your Space page
+- Once complete, test the health endpoint:
+  ```
+  https://santosh1707-rag-question-generator-api.hf.space/health
+  ```
+
+**Expected response:**
+```json
+{
+  "status": "healthy",
+  "documents_count": 0,
+  "available_sources": []
+}
+```
 
 ---
 
@@ -66,72 +136,74 @@ https://your-project.up.railway.app
    cd frontend
    ```
 
-2. Create a local environment file:
+2. Create local environment file:
    ```bash
    cp .env.local.example .env.local
    ```
 
-3. Edit `.env.local` and set your backend URL:
+   The `.env.local` should contain:
    ```
-   VITE_API_URL=https://your-backend.up.railway.app
+   VITE_API_URL=http://localhost:8000
    ```
 
-   **Important**: Use `https://` for your Railway backend URL.
+   (For local development only - production is set in Vercel)
 
 ### 2.2 Deploy to Vercel
 
-#### Option A: Using Vercel CLI
+**Option A: Using Vercel CLI (Recommended)**
 
-1. Install Vercel CLI:
-   ```bash
-   npm i -g vercel
-   ```
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-2. Login to Vercel:
-   ```bash
-   vercel login
-   ```
+# Login
+vercel login
 
-3. Deploy:
-   ```bash
-   cd frontend
-   vercel --prod
-   ```
+# Deploy from frontend directory
+cd frontend
+vercel --prod
+```
 
-4. Follow prompts:
-   - Set up and deploy? **Yes**
-   - Which scope? **Your account**
-   - Link to existing project? **No**
-   - Project name? **rag-question-maker** (or your choice)
-   - In which directory is your code located? **.** (current directory)
-   - Want to override settings? **No**
+The CLI will guide you through setup. Accept defaults or specify:
+- Project name: `question-maker-frontend`
+- root directory: `.`
 
-5. Vercel will deploy and give you a URL like:
-   ```
-   https://rag-question-maker.vercel.app
-   ```
+**Option B: Already Linked Project**
 
-#### Option B: Using Vercel Dashboard (GitHub Integration)
+Your frontend is already linked to a Vercel project. Simply push:
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click **"Add New..."** → **"Project"**
-3. Import your GitHub repository
-4. Configure:
-   - **Root Directory**: `frontend`
-   - **Framework Preset**: Vite
-   - **Build Command**: `npm run build` (auto-detected)
-   - **Output Directory**: `dist` (auto-detected)
-5. Add Environment Variable:
+```bash
+cd frontend
+git add .
+git commit -m "Configure for Hugging Face backend"
+git push origin main
+```
+
+Vercel will automatically deploy.
+
+### 2.3 Set Production Environment Variable
+
+After deployment, set the production API URL:
+
+```bash
+cd frontend
+vercel env add VITE_API_URL production --value "https://santosh1707-rag-question-generator-api.hf.space" --yes
+```
+
+Or manually:
+1. Go to Vercel Dashboard → Your project → Settings → Environment Variables
+2. Add:
    - **Key**: `VITE_API_URL`
-   - **Value**: `https://your-backend.up.railway.app`
-6. Click **"Deploy"**
+   - **Value**: `https://santosh1707-rag-question-generator-api.hf.space`
+   - **Environment**: `Production`
+3. Save and **redeploy** the project
 
-### 2.3 Verify Deployment
+### 2.4 Verify Deployment
 
-1. Wait for Vercel to build (2-3 minutes)
-2. Once deployed, open your Vercel URL
-3. The frontend should load and connect to your backend
-4. Try uploading a document to test the connection
+1. Once deployed, open your Vercel URL (e.g., `https://frontend-xxx.vercel.app`)
+2. Open browser DevTools → Console and Network tabs
+3. Try uploading a document and generating questions
+4. Check that API calls succeed (status 200)
 
 ---
 
@@ -139,34 +211,42 @@ https://your-project.up.railway.app
 
 ### CORS Issues
 
-If you see CORS errors in the browser console:
+Backend CORS is configured to allow all origins (`"*"`). If you still see CORS errors:
+- Ensure backend is running and accessible
+- Check backend logs in Hugging Face
+- Verify backend URL in Vercel environment variables
 
-1. Check that the backend VITE_API_URL is correct
-2. Ensure backend CORS allows your Vercel frontend domain
-3. The current backend config allows all origins (`"*"`), but you may want to restrict it later
+### Backend Not Accessible
 
-### Backend Connection Fails
-
-1. Verify backend is running on Railway
-2. Check that `VITE_API_URL` environment variable is set correctly in Vercel
-3. Test the backend API directly:
+1. Verify backend health:
    ```
-   https://your-backend.up.railway.app/health
+   https://santosh1707-rag-question-generator-api.hf.space/health
    ```
-   Should return: `{"status":"healthy",...}`
+   Should return JSON with `"status":"healthy"`
 
-### Build Errors on Vercel
+2. Check backend environment variables are set correctly in Hugging Face
 
-If the build fails:
-1. Ensure Node.js version is 18+ (Vercel uses this by default)
-2. Check that all dependencies in `package.json` are correct
-3. Ensure `vite.config.js` doesn't have any OS-specific paths
+3. Check backend logs in Hugging Face Space → **Logs** tab
 
-### Upload Not Working
+### MIME Type Errors (JS not loading)
 
-1. Check browser DevTools → Network tab for `/api/upload` request
-2. Verify the request goes to `https://your-backend.up.railway.app/api/upload`
-3. Check Railway logs for any errors (large files may timeout)
+If frontend shows "Failed to load module script" errors:
+- The `vercel.json` routing configuration should properly serve static assets
+- We've fixed this - if issues persist, check that `/assets/` files are being served correctly
+
+### Build Fails on Hugging Face
+
+Common causes:
+- Missing environment variables (all required API keys)
+- Network timeouts during model download (sentence-transformers downloads on first run)
+- Increase Docker build timeout in Space settings (if needed)
+
+### API Timeouts
+
+LLM generation can take 30-60 seconds. If requests timeout:
+- Backend timeout is configured for 5 minutes
+- Check backend logs for errors (model loading, API rate limits)
+- Ensure Mistral API key has credits
 
 ---
 
@@ -176,28 +256,31 @@ If the build fails:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_API_URL` | Yes | Backend API URL (e.g., `https://your-app.up.railway.app`) |
+| `VITE_API_URL` | Yes | Backend API URL: `https://santosh1707-rag-question-generator-api.hf.space` |
 
-### Railway (Backend)
+### Hugging Face (Backend)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MISTRAL_API_KEY` | Yes | Mistral AI API key |
-| `HUGGINGFACEHUB_API_TOKEN` | No | HuggingFace token for model downloads |
+| `MISTRAL_API_KEY` | Yes | Mistral AI API key (for LLM) |
+| `GROQ_API_KEY` | No | Groq API key (alternative LLM) |
+| `GEMINI_API_KEY` | No | Google Gemini API key (alternative LLM) |
+| `HUGGINGFACEHUB_API_TOKEN` | Yes | Hugging Face token (for embedding model downloads) |
 
 ---
 
 ## 📊 Deployment Checklist
 
-- [ ] Backend deployed to Railway
-- [ ] Backend health endpoint returns `{"status":"healthy"}`
-- [ ] Mistral API key set in Railway environment
-- [ ] Frontend `.env.local` updated with backend URL
+- [ ] Backend Space created on Hugging Face
+- [ ] Backend environment variables set (MISTRAL_API_KEY, HUGGINGFACEHUB_API_TOKEN, PORT=8000)
+- [ ] Backend build completed successfully
+- [ ] Backend health endpoint returns healthy status
 - [ ] Frontend deployed to Vercel
-- [ ] Vercel environment variable `VITE_API_URL` set
-- [ ] Frontend loads without errors
-- [ ] Can upload a document and see it in the list
-- [ ] Can generate quiz/questions
+- [ ] Vercel environment variable `VITE_API_URL` set to Hugging Face backend URL
+- [ ] Frontend loads without console errors
+- [ ] Can upload a document (PDF, TXT, DOCX, PPTX)
+- [ ] Can generate quiz questions
+- [ ] Can generate learning content (summary/key notes)
 
 ---
 
@@ -205,45 +288,62 @@ If the build fails:
 
 ### Frontend Updates
 
-Push to GitHub → Vercel will auto-deploy (if enabled):
+Push to GitHub (triggers Vercel auto-deploy):
 ```bash
+cd frontend
 git add .
 git commit -m "Update frontend"
 git push origin main
 ```
 
-Or manually redeploy from Vercel dashboard.
+Or manually:
+```bash
+cd frontend
+vercel --prod --force
+```
 
 ### Backend Updates
 
-Railway will auto-deploy on GitHub push:
+Push to GitHub (triggers Hugging Face auto-rebuild):
 ```bash
-git add backend/
+git add backend/ src/ Dockerfile requirements.txt
 git commit -m "Update backend"
 git push origin main
 ```
 
-Or manually trigger redeploy from Railway dashboard.
+Or manually trigger rebuild in Hugging Face Space → **Settings** → **Recalculate**.
+
+---
+
+## 📝 Live URLs
+
+**Frontend (Vercel):**
+- Production: https://frontend-psi-eight-61.vercel.app
+- Inspect: https://vercel.com/santosh102969-6116s-projects/frontend
+
+**Backend (Hugging Face):**
+- https://santosh1707-rag-question-generator-api.hf.space
+- Health: https://santosh1707-rag-question-generator-api.hf.space/health
 
 ---
 
 ## 💡 Production Considerations
 
-1. **Add Custom Domain**: In Vercel dashboard, add your own domain
-2. **Enable HTTPS**: Automatic with Vercel
-3. **Monitor Backend**: Railway provides logs and metrics
-4. **Rate Limiting**: Consider adding rate limiting to backend
-5. **File Size Limits**: Railway has memory limits; large PDFs may fail
-6. **Database Persistence**: Railway volumes persist but may be reset; consider external storage
-7. **API Key Security**: Never commit `.env` files; use Railway/Vercel env vars
+1. **Rate Limiting**: Add rate limiting to backend API endpoints
+2. **File Size Limits**: Current limit is reasonable; large files may timeout
+3. **Persistence**: Hugging Face Spaces have ephemeral storage - vector store persists across restarts but consider backup strategy
+4. **API Key Security**: Never commit `.env` files; use platform environment variables
+5. **Monitoring**: Monitor Hugging Face Space logs and Vercel function logs
+6. **Custom Domains**: Add custom domains in both platforms if needed
+7. **Cost Management**: Both platforms have free tiers with usage limits
 
 ---
 
 ## 🎉 Done!
 
-Your RAG Question Maker is now live on the internet! Share the Vercel URL with others.
+Your RAG Question Maker is now live! Share the Vercel frontend URL with users.
 
 For issues, check:
-- Vercel logs: Dashboard → Project → Functions
-- Railway logs: Dashboard → Project → Logs
-- Browser console for CORS/network errors
+- **Vercel logs**: Dashboard → Project → Functions
+- **Hugging Face logs**: Space → Logs tab
+- **Browser console**: DevTools → Console & Network

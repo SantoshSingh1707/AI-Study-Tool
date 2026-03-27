@@ -1,43 +1,40 @@
-# 🚀 Deployment Guide
+# 🚀 Comprehensive Deployment Guide
 
-This guide covers both local development and production deployment of the RAG Question Generator.
+This guide covers local development and production deployment of the RAG Question Generator.
 
 ---
 
-## 📁 Project Structure (After Migration)
+## 📁 Project Structure
 
 ```
 Question-maker/
-├── frontend/              # React + TypeScript + Vite
+├── frontend/              # React + Vite
 │   ├── src/
 │   │   ├── components/   # Reusable UI components
 │   │   ├── pages/        # Page components
-│   │   ├── store/        # Zustand state management
 │   │   ├── services/     # API client
+│   │   ├── store/        # Zustand state management
 │   │   ├── hooks/        # React Query hooks
 │   │   ├── types/        # TypeScript definitions
 │   │   └── utils/        # Helper functions
-│   ├── Dockerfile
-│   └── nginx.conf
+│   ├── package.json
+│   ├── vite.config.js
+│   └── vercel.json       # Vercel configuration
 ├── backend/               # FastAPI
 │   ├── main.py           # API server
 │   ├── config.py
-│   ├── routes/           # (routes embedded in main.py)
-│   └── requirements.txt
-├── src/                   # Original RAG engine (used by backend)
-│   ├── data_loader.py
-│   ├── embedding.py
-│   ├── vector_store.py
-│   └── search.py
-├── data/                  # Shared data directory
-│   ├── pdf/
-│   ├── textfiles/
-│   ├── docx/
-│   ├── pptx/
-│   └── vector_store/
-├── docker-compose.yml
-├── pyproject.toml        # Python dependencies (for src)
-├── requirements.txt      # Original Python deps
+│   ├── requirements.txt
+│   ├── Dockerfile        # Hugging Face deployment
+│   └── data/             # Local storage
+├── src/                  # RAG engine modules
+│   ├── data_loader.py    # Document processing
+│   ├── embedding.py      # Embedding manager
+│   ├── vector_store.py   # ChromaDB wrapper
+│   └── search.py         # RAG retrieval & generation
+├── data/                 # Local data (optional)
+├── deploy-huggingface.ps1  # Backend deployment
+├── deploy-vercel.ps1       # Frontend deployment
+├── VERCEl_DEPLOYMENT.md  # Detailed deployment guide
 ├── README.md
 └── IMPROVEMENTS.md
 ```
@@ -54,67 +51,48 @@ Question-maker/
 
 ### Backend Setup
 
-1. **Navigate to backend directory**:
-   ```bash
-   cd backend
-   ```
+```bash
+# Navigate to backend directory
+cd backend
 
-2. **Create virtual environment**:
-   ```bash
-   python -m venv .venv
-   # On Windows:
-   .venv\Scripts\activate
-   # On Unix/Mac:
-   # source .venv/bin/activate
-   ```
+# Create virtual environment
+python -m venv .venv
+# On Windows:
+.venv\Scripts\activate
+# On Unix/Mac:
+# source .venv/bin/activate
 
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-4. **Set environment variables**:
-   ```bash
-   # Copy from root .env or create new
-   cp ../.env .env  # Or manually create with MISTRAL_API_KEY
-   ```
+# Set environment variables (copy from .env.example or create manually)
+# Required: MISTRAL_API_KEY, HUGGINGFACEHUB_API_TOKEN
 
-5. **Run the backend**:
-   ```bash
-   uvicorn main:app --reload --port 8000
-   ```
+# Run the backend
+uvicorn main:app --reload --port 8000
+```
 
-   API will be available at: http://localhost:8000
-   - Health check: http://localhost:8000/health
-   - API docs: http://localhost:8000/docs
+Backend runs at: http://localhost:8000
+API docs: http://localhost:8000/docs
 
 ### Frontend Setup
 
-1. **Navigate to frontend directory**:
-   ```bash
-   cd frontend
-   ```
+```bash
+# Navigate to frontend directory
+cd frontend
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+# Install dependencies
+npm install
 
-3. **Configure environment**:
-   ```bash
-   # The default .env.development is already configured
-   # Or create .env with:
-   # VITE_API_URL=http://localhost:8000
-   ```
+# Create environment file
+cp .env.local.example .env.local
+# Contains: VITE_API_URL=http://localhost:8000
 
-4. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
+# Run the development server
+npm run dev
+```
 
-   App will be available at: http://localhost:5173
-   - Hot reload enabled
-   - API proxy configured to http://localhost:8000
+Frontend runs at: http://localhost:5173
 
 ### Fullstack Development
 
@@ -124,248 +102,289 @@ Question-maker/
 
 ---
 
-## 🐳 Docker Deployment (Production)
-
-### Using Docker Compose (Recommended)
-
-1. **Clone and setup**:
-   ```bash
-   git clone <your-repo>
-   cd Question-maker
-   ```
-
-2. **Create environment file**:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your MISTRAL_API_KEY
-   ```
-
-3. **Build and start services**:
-   ```bash
-   docker-compose up -d
-   ```
-
-   This will:
-   - Build backend image (Python 3.11, all dependencies)
-   - Build frontend image (Node 18 + Nginx)
-   - Start both services on defined ports
-   - Create shared volume for data persistence
-
-4. **Access the application**:
-   - Frontend: http://localhost (port 80)
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-
-5. **View logs**:
-   ```bash
-   docker-compose logs -f
-   ```
-
-6. **Stop services**:
-   ```bash
-   docker-compose down
-   ```
-
-   Add `-v` to also remove volumes (⚠️ deletes data)
-
-### Manual Docker Build
-
-If you want to build and run separately:
-
-**Backend**:
-```bash
-cd backend
-docker build -t rag-backend .
-docker run -p 8000:8000 \
-  -e MISTRAL_API_KEY=your_key_here \
-  -v $(pwd)/../data:/app/data \
-  rag-backend
-```
-
-**Frontend**:
-```bash
-cd frontend
-docker build -t rag-frontend .
-docker run -p 80:80 \
-  -e VITE_API_URL=http://your-backend-url:8000 \
-  rag-frontend
-```
-
----
-
 ## ☁️ Production Deployment
 
-### Option 1: Railway/Render (Backend) + Vercel (Frontend)
+### Overview
 
-**Backend (Railway/Render)**:
-1. Connect your repo
-2. Set build command: `pip install -r requirements.txt`
-3. Set start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. Add environment variable: `MISTRAL_API_KEY`
-5. Add persistent volume for `data/` directory
+Production deployment uses:
+- **Hugging Face Spaces** for backend (Docker)
+- **Vercel** for frontend (static build)
 
-**Frontend (Vercel)**:
-1. Import project from GitHub
-2. Root directory: `frontend`
-3. Build command: `npm run build`
-4. Output directory: `dist`
-5. Add environment variable: `VITE_API_URL=https://your-backend-url.railway.app`
-
-### Option 2: Single Server (Docker Compose)
-
-For VPS/Droplet:
-
-1. **SSH to server**
-2. **Clone repo**:
-   ```bash
-   git clone <repo>
-   cd Question-maker
-   ```
-
-3. **Create environment**:
-   ```bash
-   cp .env.example .env
-   nano .env  # Add MISTRAL_API_KEY
-   ```
-
-4. **Run with Docker Compose**:
-   ```bash
-   docker-compose up -d
-   ```
-
-5. **Setup Nginx reverse proxy** (optional but recommended):
-   ```nginx
-   server {
-       listen 80;
-       server_name yourdomain.com;
-
-       location / {
-           proxy_pass http://localhost:80;
-       }
-
-       location /api/ {
-           proxy_pass http://localhost:8000;
-       }
-   }
-   ```
-
-6. **Setup SSL with Let's Encrypt**:
-   ```bash
-   sudo certbot --nginx -d yourdomain.com
-   ```
+```
+Vercel Frontend → Hugging Face Backend → LLM APIs
+```
 
 ---
 
-## 🔧 Configuration
+### Part 1: Deploy Backend to Hugging Face
 
-### Environment Variables
+#### 1.1 Create Hugging Face Space
 
-**Backend (.env)**:
-```env
-MISTRAL_API_KEY=your_mistral_api_key_here
-# Optional: Configure ChromaDB settings via env vars in main.py
+1. Go to [huggingface.co/spaces](https://huggingface.co/spaces)
+2. Click **"Create new Space"**
+3. Configure:
+   - **Owner**: `santosh1707` (your username)
+   - **Space name**: `rag-question-generator-api`
+   - **SDK**: `Docker`
+   - **Hardware**: `CPU basic` (free)
+   - **Public/Private**: Your choice
+4. Click **"Create Space"**
+
+#### 1.2 Deploy Using Script
+
+From project root:
+
+```powershell
+.\deploy-huggingface.ps1
 ```
 
-**Frontend (.env)**:
-```env
-VITE_API_URL=http://localhost:8000
+The script automates:
+- Cloning the Space repository
+- Copying necessary files (Dockerfile, backend/, src/, requirements.txt)
+- Committing and pushing
+
+#### 1.3 Set Environment Variables
+
+In Hugging Face Space → **Settings** → **Variables**, add:
+
+```
+MISTRAL_API_KEY=your_mistral_key
+GROQ_API_KEY=your_groq_key (optional)
+GEMINI_API_KEY=your_gemini_key (optional)
+HUGGINGFACEHUB_API_TOKEN=your_hf_token
+PORT=8000
 ```
 
-### Data Persistence
+#### 1.4 Wait for Build
 
-Data is stored in:
-- `data/vector_store/` - ChromaDB embeddings (persistent)
-- `data/pdf/`, `data/textfiles/`, etc. - Original uploaded files
+Build takes 5-10 minutes. Monitor on your Space page.
 
-**Important**: These directories are mounted as Docker volumes to persist across restarts.
+Test when complete:
+```
+https://santosh1707-rag-question-generator-api.hf.space/health
+```
+
+Expected:
+```json
+{
+  "status": "healthy",
+  "documents_count": 0,
+  "available_sources": []
+}
+```
 
 ---
 
-## ✅ Testing
+### Part 2: Deploy Frontend to Vercel
+
+#### 2.1 Prepare Frontend
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+# Contains VITE_API_URL=http://localhost:8000 for local dev
+```
+
+#### 2.2 Deploy
+
+**Option A: Vercel CLI**
+
+```bash
+# Install and login
+npm i -g vercel
+vercel login
+
+# Deploy
+vercel --prod
+```
+
+Follow prompts. Use default settings or specify:
+- Project name: `question-maker-frontend`
+- Root directory: `.`
+
+**Option B: Already Linked**
+
+If your Vercel project is already linked:
+
+```bash
+cd frontend
+git add .
+git commit -m "Deploy to Vercel"
+git push origin main
+```
+
+Vercel auto-deploys.
+
+#### 2.3 Configure Production Environment
+
+After deployment, set `VITE_API_URL`:
+
+```bash
+cd frontend
+vercel env add VITE_API_URL production --value "https://santosh1707-rag-question-generator-api.hf.space" --yes
+```
+
+Or manually:
+1. Vercel Dashboard → Your Project → Settings → Environment Variables
+2. Add: `VITE_API_URL` = `https://santosh1707-rag-ququestion-generator-api.hf.space`
+3. Environment: Production
+4. Save and **redeploy**
+
+#### 2.4 Verify
+
+Visit your Vercel URL. Open DevTools → Network tab.
+Upload a document and verify API calls succeed.
+
+---
+
+## 🧪 Testing
 
 ### Health Check
 
 ```bash
-curl http://localhost:8000/health
-# Expected: {"status":"healthy","documents_count":0,"available_sources":[]}
+curl https://santosh1707-rag-question-generator-api.hf.space/health
 ```
 
 ### Upload Test
 
 ```bash
-curl -X POST "http://localhost:8000/api/upload" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@/path/to/your/document.pdf"
+curl -X POST "https://santosh1707-rag-question-generator-api.hf.space/api/upload" \
+  -F "file=@document.pdf"
 ```
 
 ### Generate Quiz
 
 ```bash
-curl -X POST "http://localhost:8000/api/generate/quiz" \
+curl -X POST "https://santosh1707-rag-question-generator-api.hf.space/api/generate/quiz" \
   -H "Content-Type: application/json" \
   -d '{
     "difficulty": "Medium",
     "num_questions": 5,
-    "top_k": 10,
-    "min_score": 0.2,
     "question_types": ["MCQ"]
   }'
 ```
 
 ---
 
+## 🔧 Configuration
+
+### Backend Environment (Hugging Face)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MISTRAL_API_KEY` | Yes | Mistral AI API key |
+| `GROQ_API_KEY` | No | Groq API key |
+| `GEMINI_API_KEY` | No | Gemini API key |
+| `HUGGINGFACEHUB_API_TOKEN` | Yes | Hugging Face token |
+| `PORT` | Yes | Port (8000) |
+
+### Frontend Environment (Vercel)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Yes | Backend URL (`.hf.space`) |
+
+---
+
 ## 🔍 Troubleshooting
 
-### Backend won't start
-- Check Python version (3.11+)
-- Verify `MISTRAL_API_KEY` is set
-- Check logs: `docker-compose logs backend`
-- Ensure port 8000 is available
+### Backend Build Fails on Hugging Face
 
-### Frontend can't connect to backend
-- Verify backend is running: `curl http://localhost:8000/health`
-- Check `VITE_API_URL` in frontend .env
-- Check browser console for CORS errors
-- Verify Docker network: `docker network ls`
+- Check environment variables are all set
+- First build downloads embedding model (~500MB) - may timeout, increase timeout in Space settings
+- Check build logs in Hugging Face
 
-### OCR errors
-- Install system dependencies: `apt-get install -y tesseract-ocr`
-- Check EasyOCR installation in logs
+### CORS Errors
 
-### Out of memory
-- Reduce batch size in `vector_store.py`
-- Use smaller embedding model
-- Increase Docker memory limits
+Backend allows all origins (`"*"`). If CORS errors occur:
+- Verify backend is running and accessible
+- Check `VITE_API_URL` is correct in Vercel
+- Test backend directly in browser
 
----
+### Frontend Assets Not Loading
 
-## 📈 Performance Tips
+Our updated `vercel.json` should fix this. If not:
+- Check that `/assets/` files are served correctly
+- Clear browser cache
+- Verify build output contains assets
 
-1. **Upload videos**: Use `docker-compose up --scale backend=2` for multiple backend instances
-2. **Cache embeddings**: Enable persistent vector store (already enabled)
-3. **CDN for frontend**: Deploy frontend to Vercel/Netlify for global CDN
-4. **Database scaling**: For large document collections (>10k), consider ChromaDB cloud or pgvector
-5. **GPU acceleration**: Build backend with CUDA support for faster embeddings
+### API Timeouts
+
+LLM generation takes 30-60 seconds. Backend timeout is 5 minutes.
+If still timing out:
+- Check backend logs
+- Verify LLM API keys have credits
+- Reduce generated content size
 
 ---
 
-## 🔄 Updates
+## 📊 Deployment Checklist
 
-To update the application:
-
-1. **Pull latest changes**:
-   ```bash
-   git pull origin main
-   ```
-
-2. **Rebuild and restart**:
-   ```bash
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
-   ```
+- [ ] Hugging Face Space created
+- [ ] Backend environment variables set
+- [ ] Backend build completed
+- [ ] Backend health endpoint returns `healthy`
+- [ ] Vercel project exists
+- [ ] Frontend deployed
+- [ ] `VITE_API_URL` set in Vercel (production)
+- [ ] Frontend loads without errors
+- [ ] Can upload document
+- [ ] Can generate quiz
+- [ ] Can generate learning content
 
 ---
 
-**Need help?** Check issues or create a new one on GitHub.
+## 🔄 Updates & Redeployment
+
+### Update Backend
+
+```bash
+git add backend/ src/ Dockerfile requirements.txt
+git commit -m "Update backend"
+git push origin main
+# Hugging Face auto-rebuilds
+```
+
+Or manually: Space → Settings → Recalculate
+
+### Update Frontend
+
+```bash
+cd frontend
+git add .
+git commit -m "Update frontend"
+git push origin main
+# Vercel auto-deploys
+```
+
+Or manually: `vercel --prod --force`
+
+---
+
+## 🌐 Live URLs
+
+**Frontend**: https://frontend-psi-eight-61.vercel.app
+**Backend**: https://santosh1707-rag-question-generator-api.hf.space
+
+---
+
+## 📚 More Information
+
+- **Quick Start**: See `DEPLOY_QUICKSTART.md` for one-command deployment
+- **Vercel Specific**: See `VERCEL_DEPLOYMENT.md` for detailed Vercel guide
+- **Architecture & Local Dev**: See `README.md`
+- **Testing**: See `TESTING.md`
+
+---
+
+## 💡 Production Tips
+
+1. **First build is slow** - embedding model downloads (~500MB)
+2. **Hugging Face free tier** has limited RAM - keep document sizes reasonable
+3. **Monitor usage** to avoid exceeding free tier limits
+4. **Custom domains** can be added in both platforms
+5. **Cold start** - first request after inactivity takes longer
+
+---
+
+**Need help?** Check logs in Hugging Face (Space → Logs) and Vercel (Dashboard → Functions).
