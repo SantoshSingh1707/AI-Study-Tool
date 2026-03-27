@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.*
+*.env
+data/vector_store/*
+!data/vector_store/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+.vercel/
+
+# Tests & coverage
+.coverage
+htmlcov/
+.pytest_cache/
+*.cover
+
+# IDE
+*.project
+*.pydevproject
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Node
+node_modules/
+npm-debug.log*

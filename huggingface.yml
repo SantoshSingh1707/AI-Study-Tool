@@ -1,0 +1,17 @@
+# Hugging Face Spaces Configuration
+space_type: docker
+base_image: python:3.11-slim
+
+# Build configuration
+build:
+  commands:
+    - apt-get update && apt-get install -y gcc g++ libgomp1 && rm -rf /var/lib/apt/lists/*
+    - pip install --no-cache-dir -r requirements.txt
+
+# Port configuration
+port: 8000
+
+# Health check
+healthcheck:
+  path: /health
+  timeout: 30
