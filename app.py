@@ -124,8 +124,6 @@ st.markdown("""
 st.title("🎓 Ultimate Study Tool")
 st.markdown("Your all-in-one AI study platform for mastering documents")
 
-# Load RAG components only once using caching
-@st.cache_resource
 def validate_generation_inputs(vectorstore, selected_sources, mode="quiz", num_questions=None, question_types=None, topic=None):
     """Validates user inputs before generating content
 
@@ -167,14 +165,13 @@ def validate_generation_inputs(vectorstore, selected_sources, mode="quiz", num_q
     return errors
 
 
-def load_rag_components(mistral_api_key):
+def load_rag_components(ollama_model="mistral:7b", ollama_base_url="http://localhost:11434"):
     try:
         # Lazy imports to speed up initial app load
         from src.embedding import EmbeddingManager
         from src.vector_store import VectorStore
         from src.search import RAGRetrieval
-        from langchain_mistralai import ChatMistralAI
-        
+
         # Initialize components
         embedding_manager = EmbeddingManager(model_name="multi-qa-MiniLM-L6-cos-v1")
         vectorstore = VectorStore(
@@ -182,18 +179,16 @@ def load_rag_components(mistral_api_key):
             persist_directory="data/vector_store"
         )
         vectorstore.initialize_store()
-        
+
         retriever = RAGRetrieval(vectorstore, embedding_manager)
-        
-        if not mistral_api_key:
-            return retriever, None, vectorstore, embedding_manager
-            
-        llm = ChatMistralAI(
-            model="mistral-small-2506", 
-            temperature=0.7,
-            api_key=mistral_api_key
+
+        from langchain_ollama import ChatOllama
+        llm = ChatOllama(
+            model=ollama_model,
+            base_url=ollama_base_url,
+            temperature=0.7
         )
-        
+
         return retriever, llm, vectorstore, embedding_manager
     except Exception as e:
         st.error(f"Error loading RAG components: {str(e)}")
@@ -202,15 +197,15 @@ def load_rag_components(mistral_api_key):
 # --- Sidebar configuration ---
 st.sidebar.title("⚙️ Configuration")
 
-# API Key Retrieval
-mistral_key = os.getenv("MISTRAL_API_KEY")
+ollama_model_name = st.sidebar.text_input(
+    "Ollama model",
+    value="mistral:7b",
+    help="Name of a local Ollama model (it will auto-pull if not downloaded)"
+)
 
-if not mistral_key:
-    st.sidebar.error("❌ `MISTRAL_API_KEY` not found in environment.")
-    st.sidebar.info("Please set the `MISTRAL_API_KEY` in your `.env` file or environment variables to enable AI study features.")
-    st.error("AI features are currently disabled. Please configure the Mistral API key.")
-
-retriever, llm, vectorstore, embedding_manager = load_rag_components(mistral_key)
+retriever, llm, vectorstore, embedding_manager = load_rag_components(
+    ollama_model=ollama_model_name or "mistral:7b"
+)
 
 if retriever is None:
     st.error("Failed to initialize RAG system. Please check your setup.")
@@ -330,7 +325,7 @@ if available_sources:
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
 <div style="text-align: center; color: gray; font-size: 12px;">
-    RAG Question Generator | Powered by Mistral AI & ChromaDB
+    RAG Question Generator | Powered by Ollama & ChromaDB
 </div>
 """, unsafe_allow_html=True)
 
@@ -350,34 +345,31 @@ with tab_learning:
         learn_btn = st.button("✨ Generate Study Material", type="primary", use_container_width=True)
     
     if learn_btn:
-        if llm is None:
-            st.error("Please enter a valid Mistral API key in the sidebar configuration to generate study material.")
+        # Validate inputs
+        errors = validate_generation_inputs(
+            vectorstore=vectorstore,
+            selected_sources=selected_sources if selected_sources else [],
+            mode="learning",
+            topic=topic_focus
+        )
+        if errors:
+            for err in errors:
+                st.error(err)
         else:
-            # Validate inputs
-            errors = validate_generation_inputs(
-                vectorstore=vectorstore,
-                selected_sources=selected_sources if selected_sources else [],
-                mode="learning",
-                topic=topic_focus
-            )
-            if errors:
-                for err in errors:
-                    st.error(err)
-            else:
-                from src.search import generate_learning_content
-                with st.spinner(f"Generating {learn_mode}..."):
-                    try:
-                        content = generate_learning_content(
-                            mode=learn_mode,
-                            retriever=retriever,
-                            llm=llm,
-                            top_k=top_k,
-                            source_filter=selected_sources if selected_sources else None,
-                            topic=topic_focus
-                        )
-                        st.session_state.learning_content = content
-                    except Exception as e:
-                        st.error(f"Error generating content: {e}")
+            from src.search import generate_learning_content
+            with st.spinner(f"Generating {learn_mode}..."):
+                try:
+                    content = generate_learning_content(
+                        mode=learn_mode,
+                        retriever=retriever,
+                        llm=llm,
+                        top_k=top_k,
+                        source_filter=selected_sources if selected_sources else None,
+                        topic=topic_focus
+                    )
+                    st.session_state.learning_content = content
+                except Exception as e:
+                    st.error(f"Error generating content: {e}")
                 
     if st.session_state.get("learning_content"):
         st.markdown("---")
@@ -430,46 +422,42 @@ with tab_quiz:
         st.session_state.learning_content = None
     
     if generate_btn:
-        if llm is None:
-            st.error("Please enter a valid Mistral API key in the sidebar configuration to generate a quiz.")
+        # Validate inputs
+        errors = validate_generation_inputs(
+            vectorstore=vectorstore,
+            selected_sources=selected_sources if selected_sources else [],
+            mode="quiz",
+            num_questions=num_questions,
+            question_types=question_types,
+            topic=topic_focus
+        )
+        if errors:
+            for err in errors:
+                st.error(err)
         else:
-            # Validate inputs
-            errors = validate_generation_inputs(
-                vectorstore=vectorstore,
-                selected_sources=selected_sources if selected_sources else [],
-                mode="quiz",
-                num_questions=num_questions,
-                question_types=question_types,
-                topic=topic_focus
-            )
-            if errors:
-                for err in errors:
-                    st.error(err)
-            else:
-                from src.search import generate_questions
-                with st.spinner("Analyzing documents and crafting MCQs..."):
-                    try:
-                        results = generate_questions(
-                            difficulty=difficulty,
-                            retriever=retriever,
-                            llm=llm,
-                            num_questions=num_questions,
-                            top_k=top_k,
-                            min_score=score_threshold,
-                            source_filter=selected_sources if selected_sources else None,
-                            topic=topic_focus,
-                            question_types=question_types if question_types else ["MCQ"]
-                        )
-                        st.session_state.quiz_data = results["questions"]
-                        st.session_state.quiz_sources = results["sources"]
-                        st.session_state.user_answers = {}
-                        st.session_state.quiz_submitted = False
-                        import time
-                        st.session_state.start_time = time.time()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error generating quiz: {e}")
-                    st.error(f"Error generating quiz: {str(e)}")
+            from src.search import generate_questions
+            with st.spinner("Analyzing documents and crafting MCQs..."):
+                try:
+                    results = generate_questions(
+                        difficulty=difficulty,
+                        retriever=retriever,
+                        llm=llm,
+                        num_questions=num_questions,
+                        top_k=top_k,
+                        min_score=score_threshold,
+                        source_filter=selected_sources if selected_sources else None,
+                        topic=topic_focus,
+                        question_types=question_types if question_types else ["MCQ"]
+                    )
+                    st.session_state.quiz_data = results["questions"]
+                    st.session_state.quiz_sources = results["sources"]
+                    st.session_state.user_answers = {}
+                    st.session_state.quiz_submitted = False
+                    import time
+                    st.session_state.start_time = time.time()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error generating quiz: {e}")
     
     # Display Quiz
     if st.session_state.quiz_data:

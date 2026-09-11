@@ -7,9 +7,6 @@ omit =
     */.venv/*
     */site-packages/*
     */__pycache__/*
-    */node_modules/*
-    */dist/*
-    */build/*
     **/*.pyc
 
 [report]
@@ -27,7 +24,7 @@ exclude_lines =
 
 [html]
 directory = htmlcov
-title = Backend Coverage Report
+title = Coverage Report
 
 [xml]
 output = coverage.xml

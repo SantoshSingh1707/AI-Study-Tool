@@ -27,26 +27,20 @@ wheels/
 .env.*.local
 .env.development
 
-# Backend environment (separate from root)
-backend/.env
-
 # Local Database & Data
 data/vector_store/
 data/pdf/
 data/textfiles/
 data/docx/
 data/pptx/
-backend/data/
 
 # Upload directory (created at runtime)
-backend/data/uploads/
 data/uploads/
 
 # Coverage reports
 htmlcov/
 .coverage
 coverage/
-frontend/coverage/
 
 # Cache directories
 .pytest_cache/
@@ -68,7 +62,6 @@ frontend/coverage/
 
 # Claude Code local settings
 .claude/settings.local.json
-frontend/.claude/settings.local.json
 
 # OS generated files
 .DS_Store
@@ -84,14 +77,6 @@ Thumbs.db
 *.temp
 *.log
 
-# Frontend build artifacts
-frontend/dist/
-frontend/build/
-
-# Node.js dependencies
-node_modules/
-**/node_modules/
-
 # Virtual environments (any level, including nested)
 .venv/
 venv/
@@ -101,4 +86,3 @@ env/
 **/venv/
 **/ENV/
 **/env/
-.vercel
